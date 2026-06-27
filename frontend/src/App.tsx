@@ -131,8 +131,8 @@ const stages: Stage[] = [
   {
     id: "ship",
     name: "Render Launchpad",
-    story: "A live preview link is launched.",
-    engineer: "Render preview deployment attached.",
+    story: "The factory output is ready for review.",
+    engineer: "Render-hosted dashboard + generated PR available.",
     symbol: "↗",
   },
 ];
@@ -152,14 +152,16 @@ function App() {
     run?.progress ?? Math.round(((activeStage + 1) / stages.length) * 100);
 
   async function startFactoryRun(issue = selectedIssue) {
-    setSelectedIssue(issue);
+    const liveDemoIssue = issues.find((item) => item.id === "#5705") ?? issues[4];
+
+    setSelectedIssue(liveDemoIssue);
 
     const response = await fetch(`${API_BASE}/start-build`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ issue }),
+      body: JSON.stringify({ issue: liveDemoIssue }),
     });
 
     if (!response.ok) {
@@ -244,21 +246,21 @@ function App() {
             </div>
 
             <h1>
-              A magical factory for shipping
-              <span> real software features.</span>
+              A factory control room for shipping
+              <span> real software changes.</span>
             </h1>
 
             <p className="hero-subtitle">
-              Pick a rough issue. SuperPlane moves it through AI-powered
-              stations: spec, blueprint, code, validation, PR, and Render
-              preview.
+              This demo runs one validated end-to-end path: SuperPlane triggers
+              the factory, the backend generates specs and code changes, the
+              build is validated, and the output is a real GitHub PR.
             </p>
 
             <div className="hero-buttons">
               <button className="primary" onClick={() => startFactoryRun()}>
                 {run?.status === "running"
                   ? "Factory running..."
-                  : "Start factory run"}
+                  : "Start live demo run"}
               </button>
               <button
                 className="secondary"
@@ -272,8 +274,8 @@ function App() {
 
             <div className="hero-stats">
               <div>
-                <strong>5</strong>
-                <span>validation issues</span>
+                <strong>1</strong>
+                <span>live demo path</span>
               </div>
               <div>
                 <strong>8</strong>
@@ -295,7 +297,7 @@ function App() {
           <aside className="panel issue-dock">
             <div className="panel-heading">
               <span>Choose a build</span>
-              <h2>Issue Toybox</h2>
+              <h2>Issue Queue</h2>
             </div>
 
             <div className="issue-stack">
@@ -304,15 +306,16 @@ function App() {
                   key={issue.id}
                   className={`issue-ticket ${
                     selectedIssue.id === issue.id ? "selected" : ""
-                  }`}
+                  } ${issue.id !== "#5705" ? "disabled" : ""}`}
                   onClick={() => {
+                    if (issue.id !== "#5705") return;
                     setSelectedIssue(issue);
                     setRun(null);
                   }}
                 >
                   <div className="ticket-top">
                     <span>{issue.id}</span>
-                    <small>{issue.difficulty}</small>
+                    <small>{issue.id === "#5705" ? "Live Demo" : "Queued"}</small>
                   </div>
                   <h3>{issue.title}</h3>
                   <p>{issue.subtitle}</p>
@@ -328,7 +331,7 @@ function App() {
                 <span>Live assembly line</span>
                 <h2>
                   {mode === "story"
-                    ? "Magical station view"
+                    ? "Factory station view"
                     : "SuperPlane node view"}
                 </h2>
               </div>
@@ -410,8 +413,8 @@ function App() {
                 <strong>{run?.status ?? "Waiting"}</strong>
               </div>
               <div>
-                <span>Deploy</span>
-                <strong>{run?.previewUrl ? "Preview ready" : "Pending"}</strong>
+                <span>Output</span>
+                <strong>{run?.prUrl ? "PR ready" : "Pending"}</strong>
               </div>
             </div>
 
@@ -447,15 +450,17 @@ function App() {
                 onClick={() => run?.prUrl && window.open(run.prUrl, "_blank")}
                 disabled={!run?.prUrl}
               >
-                GitHub PR
+                Generated PR
               </button>
               <button
                 onClick={() =>
-                  run?.previewUrl && window.open(run.previewUrl, "_blank")
+                  window.open(
+                    "https://github.com/march-M-R/feature-factory-demo-app",
+                    "_blank"
+                  )
                 }
-                disabled={!run?.previewUrl}
               >
-                Render Preview
+                Output Repo
               </button>
             </div>
           </aside>
@@ -475,9 +480,9 @@ function App() {
           <div className="story-card">
             <span>Demo line</span>
             <p>
-              “The dashboard is the magical workshop. SuperPlane is the factory
-              floor. AI agents do the heavy lifting, and each station validates
-              before the feature can move forward.”
+              “SuperPlane triggers the factory run. Render hosts the dashboard
+              and API. The factory patches an existing repo, validates the build,
+              and produces a generated GitHub PR as the output.”
             </p>
           </div>
         </section>

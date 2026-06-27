@@ -47,7 +47,7 @@ function createRun(issue) {
     acceptanceCriteria: [],
     blueprint: [],
     prUrl: null,
-    previewUrl: "http://localhost:5173/",
+    previewUrl: "https://build-a-feature-factory.onrender.com",
     error: null,
     stations: stations.map((id) => ({
       id,

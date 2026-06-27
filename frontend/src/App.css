@@ -905,3 +905,14 @@ pre {
 .stage-card.failed .stage-title span {
   color: #fca5a5;
 }
+.issue-ticket.disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+
+.issue-ticket.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.095);
+}
