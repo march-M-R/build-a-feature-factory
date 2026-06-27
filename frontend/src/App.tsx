@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import bearAsset from "./assets/bear-conductor.png";
 import "./App.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050";
+const OUTPUT_REPO = "https://github.com/march-M-R/feature-factory-demo-app";
 
 type Issue = {
   id: string;
@@ -9,14 +11,7 @@ type Issue = {
   subtitle: string;
   target: string;
   difficulty: string;
-};
-
-type Stage = {
-  id: string;
-  name: string;
-  story: string;
-  engineer: string;
-  symbol: string;
+  runnable: boolean;
 };
 
 type RunStation = {
@@ -35,154 +30,99 @@ type FactoryRun = {
   acceptanceCriteria: string[];
   blueprint: string[];
   prUrl: string | null;
-  previewUrl: string | null;
   error: string | null;
   stations: RunStation[];
 };
 
 const issues: Issue[] = [
   {
+    id: "#5705",
+    title: "Canvas Warnings Improvements",
+    subtitle: "Group warnings and make every next step clear.",
+    target: "WarningsPanel.tsx",
+    difficulty: "Live Demo",
+    runnable: true,
+  },
+  {
     id: "#5368",
     title: "Markdown View Mode",
-    subtitle: "Mermaid diagrams + node mention chips",
+    subtitle: "Mermaid diagrams and node mention chips.",
     target: "MarkdownViewer.tsx",
-    difficulty: "Advanced",
+    difficulty: "Queued",
+    runnable: false,
   },
   {
     id: "#5366",
     title: "Canvas Version Diff",
-    subtitle: "Highlight what changed between versions",
+    subtitle: "Highlight what changed between versions.",
     target: "CanvasDiff.tsx",
-    difficulty: "Medium",
+    difficulty: "Queued",
+    runnable: false,
   },
   {
     id: "#5164",
     title: "Send Execution to Agent Chat",
-    subtitle: "Push run context into an AI chat",
+    subtitle: "Push run context into an AI conversation.",
     target: "AgentChat.tsx",
-    difficulty: "Medium",
+    difficulty: "Queued",
+    runnable: false,
   },
   {
     id: "#5704",
     title: "Run Inspection UX",
-    subtitle: "Fix inspection paper cuts",
+    subtitle: "Make execution failures easier to understand.",
     target: "RunInspection.tsx",
-    difficulty: "Easy",
-  },
-  {
-    id: "#5705",
-    title: "Canvas Warnings Improvements",
-    subtitle: "Make warnings grouped, clear, and actionable",
-    target: "WarningsPanel.tsx",
-    difficulty: "Easy",
+    difficulty: "Queued",
+    runnable: false,
   },
 ];
 
-const stages: Stage[] = [
-  {
-    id: "choose",
-    name: "Idea Atelier",
-    story: "A rough idea enters the workshop.",
-    engineer: "Issue intake event received.",
-    symbol: "✦",
-  },
-  {
-    id: "requirements",
-    name: "Spec Loom",
-    story: "AI weaves the idea into requirements.",
-    engineer: "LLM generates requirement spec.",
-    symbol: "⌘",
-  },
-  {
-    id: "criteria",
-    name: "Heart Check",
-    story: "The feature gets acceptance criteria.",
-    engineer: "Acceptance criteria generated.",
-    symbol: "♥",
-  },
-  {
-    id: "blueprint",
-    name: "Blueprint Observatory",
-    story: "AI maps the architecture and target files.",
-    engineer: "Implementation plan + file map produced.",
-    symbol: "⌬",
-  },
-  {
-    id: "code",
-    name: "Code Forge",
-    story: "The agent shapes the codebase.",
-    engineer: "Runner applies code changes.",
-    symbol: "⚒",
-  },
-  {
-    id: "quality",
-    name: "Validation Lab",
-    story: "The build is tested before shipping.",
-    engineer: "Build/test validation gate.",
-    symbol: "◎",
-  },
-  {
-    id: "package",
-    name: "PR Vault",
-    story: "The feature is packaged for review.",
-    engineer: "GitHub pull request created.",
-    symbol: "▣",
-  },
-  {
-    id: "ship",
-    name: "Render Launchpad",
-    story: "The factory output is ready for review.",
-    engineer: "Render-hosted dashboard and generated PR available.",
-    symbol: "↗",
-  },
+const stages = [
+  { id: "choose", short: "Intake", icon: "✦", copy: "A rough feature enters the factory." },
+  { id: "requirements", short: "Requirements", icon: "≡", copy: "Intent becomes a focused product spec." },
+  { id: "criteria", short: "Criteria", icon: "◇", copy: "Success becomes clear and testable." },
+  { id: "blueprint", short: "Blueprint", icon: "⌘", copy: "The agent maps the implementation." },
+  { id: "code", short: "Code", icon: "</>", copy: "A scoped patch is forged in the repo." },
+  { id: "quality", short: "Validate", icon: "✓", copy: "TypeScript and Vite verify the build." },
+  { id: "package", short: "PR", icon: "↗", copy: "The change is packaged for review." },
+  { id: "ship", short: "Launch", icon: "◉", copy: "Render keeps the proof live." },
 ];
 
 function App() {
-  const [selectedIssue, setSelectedIssue] = useState<Issue>(issues[4]);
+  const liveIssue = issues[0];
   const [run, setRun] = useState<FactoryRun | null>(null);
-  const [mode, setMode] = useState<"story" | "engineer">("story");
-
-  const activeStage = useMemo(() => {
-    if (!run) return 0;
-    const index = stages.findIndex((stage) => stage.id === run.activeStation);
-    return index >= 0 ? index : 0;
-  }, [run]);
-
-  const progress =
-    run?.progress ?? Math.round(((activeStage + 1) / stages.length) * 100);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   async function startFactoryRun() {
-    const liveDemoIssue = issues.find((item) => item.id === "#5705") ?? issues[4];
+    if (run?.status === "running") return;
+    setRequestError(null);
 
-    setSelectedIssue(liveDemoIssue);
+    try {
+      const response = await fetch(`${API_BASE}/start-build`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issue: liveIssue }),
+      });
 
-    const response = await fetch(`${API_BASE}/start-build`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ issue: liveDemoIssue }),
-    });
-
-    if (!response.ok) {
-      alert("Could not start factory run. Check backend terminal.");
-      return;
+      if (!response.ok) throw new Error("The factory API did not accept the run.");
+      setRun((await response.json()) as FactoryRun);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : "Could not reach the factory API.");
     }
-
-    const data: FactoryRun = await response.json();
-    setRun(data);
   }
 
   useEffect(() => {
-    if (!run?.runId) return;
-    if (run.status === "complete" || run.status === "failed") return;
+    if (!run?.runId || run.status !== "running") return;
 
     const interval = window.setInterval(async () => {
-      const response = await fetch(`${API_BASE}/status/${run.runId}`);
-      const data: FactoryRun = await response.json();
-      setRun(data);
-
-      if (data.status === "complete" || data.status === "failed") {
+      try {
+        const response = await fetch(`${API_BASE}/status/${run.runId}`);
+        if (!response.ok) throw new Error("Run status is unavailable.");
+        const nextRun = (await response.json()) as FactoryRun;
+        setRun(nextRun);
+        if (nextRun.status !== "running") window.clearInterval(interval);
+      } catch (error) {
+        setRequestError(error instanceof Error ? error.message : "Lost contact with the factory API.");
         window.clearInterval(interval);
       }
     }, 700);
@@ -190,352 +130,188 @@ function App() {
     return () => window.clearInterval(interval);
   }, [run?.runId, run?.status]);
 
-  const currentRequirements = run?.requirements.length
+  function stationStatus(id: string, index: number) {
+    const backendStatus = run?.stations.find((station) => station.id === id)?.status;
+    if (backendStatus) return backendStatus;
+    return index === 0 ? "active" : "waiting";
+  }
+
+  const requirements = run?.requirements.length
     ? run.requirements
-    : ["Waiting for the factory to generate requirements."];
-
-  const currentCriteria = run?.acceptanceCriteria.length
+    : ["A focused, testable product improvement.", "A UI that explains warnings without technical logs."];
+  const criteria = run?.acceptanceCriteria.length
     ? run.acceptanceCriteria
-    : ["Waiting for acceptance criteria."];
-
-  const currentBlueprint = run?.blueprint.length
+    : ["Warnings are grouped by severity.", "Every warning includes a suggested next action."];
+  const blueprint = run?.blueprint.length
     ? run.blueprint
-    : [`Target file: ${selectedIssue.target}`];
-
-  const currentLogs = run?.logs.length
+    : ["Target: src/components/WarningsPanel.tsx", "Build validation gates the generated branch."];
+  const logs = run?.logs.length
     ? run.logs.join("\n")
-    : `> waiting for feature selection
-> selected ${selectedIssue.id} ${selectedIssue.title}
-> press Start live demo run`;
+    : "> factory standing by\n> live issue loaded: #5705\n> waiting for SuperPlane trigger";
 
   return (
-    <main className="app">
-      <div className="noise" />
-      <div className="aurora aurora-a" />
-      <div className="aurora aurora-b" />
-      <div className="aurora aurora-c" />
+    <main className="site-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
 
-      <section className="shell">
-        <nav className="topbar">
-          <div className="brand">
-            <span className="brand-mark">✧</span>
-            <span>Build-a-Feature Factory</span>
-          </div>
+      <nav className="nav-wrap">
+        <a className="wordmark" href="#top" aria-label="Build-a-Feature Factory home">
+          <span>✦</span> Feature Factory
+        </a>
+        <div className="nav-links">
+          <a href="#flow">How it works</a>
+          <a href="#demo">Live demo</a>
+          <span className="live-pill"><i /> Hackathon live</span>
+        </div>
+      </nav>
 
-          <div className="nav-pills">
-            <button
-              className={mode === "story" ? "active" : ""}
-              onClick={() => setMode("story")}
-            >
-              Story Mode
+      <section className="hero" id="top">
+        <div className="hero-copy">
+          <div className="eyebrow"><span>↗</span> SuperPlane Hackathon · Live proof</div>
+          <h1>Build-a-Feature <em>Factory.</em></h1>
+          <p className="hero-lede">From rough feature request to validated GitHub PR.</p>
+          <p className="hero-story">
+            SuperPlane triggers it. <strong>Render hosts it.</strong> GitHub proves it.
+            One elegant workflow turns product intent into reviewable code.
+          </p>
+          <div className="hero-actions">
+            <button className="button button-primary" onClick={startFactoryRun} disabled={run?.status === "running"}>
+              <span>{run?.status === "running" ? "Factory in motion" : "Start live demo run"}</span>
+              <b>{run?.status === "running" ? `${run.progress}%` : "→"}</b>
             </button>
-            <button
-              className={mode === "engineer" ? "active" : ""}
-              onClick={() => setMode("engineer")}
-            >
-              Engineer Mode
+            <button className="button button-ghost" onClick={() => window.open(run?.prUrl || `${OUTPUT_REPO}/pulls`, "_blank")}>
+              Open proof PR
             </button>
           </div>
-        </nav>
+          {requestError && <p className="request-error">{requestError} Check that the backend is running.</p>}
+          <div className="hero-footnote"><span>☕</span> From vague issue to working PoC—before the coffee gets cold.</div>
+        </div>
 
-        <section className="hero">
-          <div className="hero-left">
-            <div className="badge">
-              <span className="badge-dot" />
-              SuperPlane Hackathon · Build Your Own Software Factory
-            </div>
-
-            <h1>
-              A factory control room for shipping
-              <span> real software changes.</span>
-            </h1>
-
-            <p className="hero-subtitle">
-              This demo runs one validated end-to-end path: SuperPlane triggers
-              the factory, the backend generates specs and code changes, the
-              build is validated, and the output is a real GitHub PR.
-            </p>
-
-            <div className="hero-buttons">
-              <button className="primary" onClick={() => startFactoryRun()}>
-                {run?.status === "running"
-                  ? "Factory running..."
-                  : "Start live demo run"}
-              </button>
-              <button
-                className="secondary"
-                onClick={() =>
-                  setMode(mode === "story" ? "engineer" : "story")
-                }
-              >
-                Toggle {mode === "story" ? "engineer" : "story"} view
-              </button>
-            </div>
-
-            <div className="hero-stats">
-              <div>
-                <strong>1</strong>
-                <span>live demo path</span>
-              </div>
-              <div>
-                <strong>8</strong>
-                <span>factory stations</span>
-              </div>
-              <div>
-                <strong>2+</strong>
-                <span>Render services</span>
-              </div>
+        <div className="control-room" aria-label="Feature factory control room">
+          <div className="room-topline"><span>Feature Factory Control</span><i /></div>
+          <div className="factory-window">
+            <div className="window-grid" />
+            <div className="skyline"><i /><i /><i /><i /><i /><i /><i /></div>
+            <div className="status-screen">
+              <small>Factory status</small>
+              <strong>{run?.status === "complete" ? "Feature shipped." : run?.status === "failed" ? "Needs attention." : run ? "Everything is moving." : "Ready for ignition."}</strong>
+              <div className="chart-line"><i /><i /><i /><i /><i /><i /></div>
             </div>
           </div>
-
-          <div className="hero-right">
-            <ArchitectureHologram activeStage={activeStage} />
+          <div className="conductor">
+            <div className="asset-halo" />
+            <div className="bear-lift">
+              <img src={bearAsset} alt="Teddy bear factory conductor rising from the control console" />
+            </div>
+            <span>SuperPlane</span>
+            <small>orchestration core</small>
           </div>
-        </section>
-
-        <section className="main-grid">
-          <aside className="panel issue-dock">
-            <div className="panel-heading">
-              <span>Choose a build</span>
-              <h2>Issue Queue</h2>
-            </div>
-
-            <div className="issue-stack">
-              {issues.map((issue) => (
-                <button
-                  key={issue.id}
-                  className={`issue-ticket ${
-                    selectedIssue.id === issue.id ? "selected" : ""
-                  } ${issue.id !== "#5705" ? "disabled" : ""}`}
-                  onClick={() => {
-                    if (issue.id !== "#5705") return;
-                    setSelectedIssue(issue);
-                    setRun(null);
-                  }}
-                >
-                  <div className="ticket-top">
-                    <span>{issue.id}</span>
-                    <small>
-                      {issue.id === "#5705" ? "Live Demo" : "Queued"}
-                    </small>
-                  </div>
-                  <h3>{issue.title}</h3>
-                  <p>{issue.subtitle}</p>
-                  <div className="target-file">{issue.target}</div>
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <section className="panel factory-floor">
-            <div className="panel-heading row">
-              <div>
-                <span>Live assembly line</span>
-                <h2>
-                  {mode === "story"
-                    ? "Factory station view"
-                    : "SuperPlane node view"}
-                </h2>
-              </div>
-
-              <div className="progress-mini">
-                <span>{progress}%</span>
-                <div>
-                  <i style={{ width: `${progress}%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div className="stage-runway">
-              {stages.map((stage, index) => {
-                const backendStation = run?.stations.find(
-                  (s) => s.id === stage.id
-                );
-                const status = backendStation?.status;
-                const done = status === "complete";
-                const active = status === "active" || (!run && index === 0);
-                const failed = status === "failed";
-
-                return (
-                  <article
-                    key={stage.name}
-                    className={`stage-card ${done ? "done" : ""} ${
-                      active ? "active" : ""
-                    } ${failed ? "failed" : ""}`}
-                  >
-                    <div className="stage-symbol">
-                      {done ? "✓" : stage.symbol}
-                    </div>
-                    <div>
-                      <div className="stage-title">
-                        <h3>{stage.name}</h3>
-                        <span>
-                          {failed
-                            ? "failed"
-                            : done
-                              ? "complete"
-                              : active
-                                ? run?.status === "running"
-                                  ? "running"
-                                  : "ready"
-                                : "waiting"}
-                        </span>
-                      </div>
-                      <p>{mode === "story" ? stage.story : stage.engineer}</p>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <aside className="panel certificate">
-            <div className="panel-heading">
-              <span>Feature certificate</span>
-              <h2>{selectedIssue.title}</h2>
-            </div>
-
-            <div className="certificate-orb">
-              <div className="orb-ring" />
-              <div className="orb-ring second" />
-              <div className="orb-center">🧸</div>
-            </div>
-
-            <div className="certificate-list">
-              <div>
-                <span>Issue</span>
-                <strong>{selectedIssue.id}</strong>
-              </div>
-              <div>
-                <span>Target</span>
-                <strong>{selectedIssue.target}</strong>
-              </div>
-              <div>
-                <span>Status</span>
-                <strong>{run?.status ?? "Waiting"}</strong>
-              </div>
-              <div>
-                <span>Output</span>
-                <strong>{run?.prUrl ? "PR ready" : "Pending"}</strong>
-              </div>
-            </div>
-
-            <div className="generated-card">
-              <h3>Generated requirements</h3>
-              <ul>
-                {currentRequirements.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="generated-card">
-              <h3>Acceptance criteria</h3>
-              <ul>
-                {currentCriteria.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="generated-card">
-              <h3>Blueprint</h3>
-              <ul>
-                {currentBlueprint.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="launch-buttons">
-              <button
-                onClick={() => run?.prUrl && window.open(run.prUrl, "_blank")}
-                disabled={!run?.prUrl}
-              >
-                Generated PR
-              </button>
-              <button
-                onClick={() =>
-                  window.open(
-                    "https://github.com/march-M-R/feature-factory-demo-app",
-                    "_blank"
-                  )
-                }
-              >
-                Output Repo
-              </button>
-            </div>
-          </aside>
-        </section>
-
-        <section className="bottom-strip">
-          <div className="terminal-card">
-            <div className="terminal-top">
-              <span />
-              <span />
-              <span />
-              <strong>factory-run.log</strong>
-            </div>
-            <pre>{currentLogs}</pre>
-          </div>
-
-          <div className="story-card">
-            <span>Demo line</span>
-            <p>
-              “SuperPlane triggers the factory run. Render hosts the dashboard
-              and API. The factory patches an existing repo, validates the build,
-              and produces a generated GitHub PR as the output.”
-            </p>
-          </div>
-        </section>
+          <div className="console-lights">{Array.from({ length: 11 }, (_, index) => <i key={index} />)}</div>
+        </div>
       </section>
+
+      <section className="section flow-section" id="flow">
+        <div className="section-heading">
+          <div><span className="kicker">01 · The assembly line</span><h2>One idea. Eight precise stations.</h2></div>
+          <p>Each stage leaves visible proof before the next one begins.</p>
+        </div>
+        <div className="station-track">
+          {stages.map((stage, index) => {
+            const status = stationStatus(stage.id, index);
+            return (
+              <article className={`station ${status}`} key={stage.id}>
+                <div className="station-number">{String(index + 1).padStart(2, "0")}</div>
+                <div className="station-icon">{status === "complete" ? "✓" : stage.icon}</div>
+                <div><h3>{stage.short}</h3><p>{stage.copy}</p></div>
+                <span className="station-status">{status}</span>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="section ecosystem-grid">
+        <article className="orchestration-card">
+          <span className="kicker">02 · The conductor</span>
+          <h2>SuperPlane keeps every station in rhythm.</h2>
+          <p>It triggers the run, calls the factory API, and carries context from intent to validated output.</p>
+          <div className="node-flow">
+            <div><span>01</span><strong>Start Factory Run</strong><small>SuperPlane trigger</small></div>
+            <b>→</b>
+            <div><span>02</span><strong>Run Full Factory</strong><small>Factory API</small></div>
+          </div>
+        </article>
+        <article className="render-card">
+          <span className="kicker">03 · The launchpad</span>
+          <h2>Render makes the proof public.</h2>
+          <div className="hosting-list">
+            <div><i>●</i><span>Frontend dashboard</span><strong>Live</strong></div>
+            <div><i>●</i><span>Factory API</span><strong>Live</strong></div>
+            <div><i>●</i><span>Stable demo URL</span><strong>Public</strong></div>
+          </div>
+        </article>
+      </section>
+
+      <section className="section demo-section" id="demo">
+        <div className="section-heading">
+          <div><span className="kicker">04 · Live demonstration</span><h2>The factory floor is yours.</h2></div>
+          <div className={`run-badge ${run?.status || "ready"}`}><i /> {run?.status || "Ready to run"}</div>
+        </div>
+
+        <div className="demo-grid">
+          <aside className="issue-queue">
+            <div className="panel-title"><span>Issue queue</span><small>1 live · 4 queued</small></div>
+            {issues.map((issue) => (
+              <button className={`issue-card ${issue.runnable ? "selected" : "queued"}`} key={issue.id} disabled={!issue.runnable} onClick={issue.runnable ? startFactoryRun : undefined}>
+                <div><span>{issue.id}</span><em>{issue.difficulty}</em></div>
+                <h3>{issue.title}</h3>
+                <p>{issue.subtitle}</p>
+                <small>{issue.target}</small>
+              </button>
+            ))}
+          </aside>
+
+          <article className="certificate">
+            <div className="certificate-head">
+              <div><span>Feature certificate</span><h2>Canvas Warnings Improvements</h2></div>
+              <div className="seal"><span>✓</span><small>PoC</small></div>
+            </div>
+            <div className="certificate-meta">
+              <div><small>Issue</small><strong>#5705</strong></div>
+              <div><small>Target</small><strong>WarningsPanel.tsx</strong></div>
+              <div><small>Progress</small><strong>{run?.progress ?? 0}%</strong></div>
+              <div><small>Status</small><strong>{run?.status ?? "Waiting"}</strong></div>
+            </div>
+            <div className="proof-columns">
+              <ProofList title="Generated requirements" number="01" items={requirements} />
+              <ProofList title="Acceptance criteria" number="02" items={criteria} />
+              <ProofList title="Blueprint" number="03" items={blueprint} />
+            </div>
+            {run?.error && <p className="run-error">{run.error}</p>}
+            <div className="output-actions">
+              <button className="button button-primary" disabled={!run?.prUrl} onClick={() => run?.prUrl && window.open(run.prUrl, "_blank")}>Generated PR <span>↗</span></button>
+              <button className="button button-ghost" onClick={() => window.open(OUTPUT_REPO, "_blank")}>Output Repo <span>↗</span></button>
+            </div>
+          </article>
+        </div>
+
+        <div className="terminal">
+          <div className="terminal-bar"><div><i /><i /><i /></div><span>factory-run.log</span><small>{run ? `run ${run.runId.slice(0, 8)}` : "standing by"}</small></div>
+          <pre>{logs}</pre>
+        </div>
+      </section>
+
+      <footer><span>Build-a-Feature Factory</span><p>Built by humans. Supercharged by SuperPlane.</p><small>Hackathon 2026</small></footer>
     </main>
   );
 }
 
-function ArchitectureHologram({ activeStage }: { activeStage: number }) {
-  const nodes = ["Idea", "Spec", "Plan", "Agent", "Check", "PR", "Render"];
-
+function ProofList({ title, number, items }: { title: string; number: string; items: string[] }) {
   return (
-    <div className="hologram-card">
-      <div className="holo-header">
-        <span>Architecture Hologram</span>
-        <strong>SuperPlane-controlled flow</strong>
-      </div>
-
-      <div className="holo-visual">
-        <div className="core-planet">
-          <span>SP</span>
-          <small>Canvas</small>
-        </div>
-
-        {nodes.map((node, index) => (
-          <div
-            key={node}
-            className={`holo-node node-${index + 1} ${
-              index <= activeStage ? "lit" : ""
-            }`}
-          >
-            {node}
-          </div>
-        ))}
-
-        <svg className="holo-lines" viewBox="0 0 500 500">
-          <path d="M250 250 C120 120, 80 190, 96 92" />
-          <path d="M250 250 C260 90, 180 95, 250 62" />
-          <path d="M250 250 C390 90, 370 170, 408 105" />
-          <path d="M250 250 C420 260, 430 330, 420 390" />
-          <path d="M250 250 C270 410, 330 410, 255 438" />
-          <path d="M250 250 C120 410, 120 330, 90 385" />
-          <path d="M250 250 C90 250, 90 290, 68 250" />
-        </svg>
-      </div>
-
-      <div className="holo-caption">
-        <span className="caption-dot" />
-        Live factory run: station {activeStage + 1} / {stages.length}
-      </div>
-    </div>
+    <section className="proof-list">
+      <div><span>{number}</span><h3>{title}</h3></div>
+      <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+    </section>
   );
 }
 
