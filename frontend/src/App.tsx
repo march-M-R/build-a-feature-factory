@@ -132,7 +132,7 @@ const stages: Stage[] = [
     id: "ship",
     name: "Render Launchpad",
     story: "The factory output is ready for review.",
-    engineer: "Render-hosted dashboard + generated PR available.",
+    engineer: "Render-hosted dashboard and generated PR available.",
     symbol: "↗",
   },
 ];
@@ -151,7 +151,7 @@ function App() {
   const progress =
     run?.progress ?? Math.round(((activeStage + 1) / stages.length) * 100);
 
-  async function startFactoryRun(issue = selectedIssue) {
+  async function startFactoryRun() {
     const liveDemoIssue = issues.find((item) => item.id === "#5705") ?? issues[4];
 
     setSelectedIssue(liveDemoIssue);
@@ -206,7 +206,7 @@ function App() {
     ? run.logs.join("\n")
     : `> waiting for feature selection
 > selected ${selectedIssue.id} ${selectedIssue.title}
-> press Start factory run`;
+> press Start live demo run`;
 
   return (
     <main className="app">
@@ -315,7 +315,9 @@ function App() {
                 >
                   <div className="ticket-top">
                     <span>{issue.id}</span>
-                    <small>{issue.id === "#5705" ? "Live Demo" : "Queued"}</small>
+                    <small>
+                      {issue.id === "#5705" ? "Live Demo" : "Queued"}
+                    </small>
                   </div>
                   <h3>{issue.title}</h3>
                   <p>{issue.subtitle}</p>
