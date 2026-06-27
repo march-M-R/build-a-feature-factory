@@ -1,0 +1,11 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #030712;
+}
+
+body {
+  margin: 0;
+}
