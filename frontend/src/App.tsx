@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import bearAsset from "./assets/bear-conductor.png";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5050";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.PROD
+    ? "https://build-a-feature-factory-api.onrender.com"
+    : "http://localhost:5050");
 const OUTPUT_REPO = "https://github.com/march-M-R/feature-factory-demo-app";
 
 type Issue = {
